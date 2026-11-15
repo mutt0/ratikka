@@ -170,6 +170,7 @@ const store = {
 };
 const byLine = (a, b) => (parseInt(a) - parseInt(b)) || String(a).localeCompare(String(b));
 let favs = store.get("ratikka.favs", []);
+const favKey = f => f.id + "|" + [...(f.lines || [])].sort(byLine).join(",");
 let timers = [];
 const every = (fn, ms) => timers.push(setInterval(fn, ms));
 function showErr(text){ const b = $("errbox"); b.hidden = !text; b.textContent = text || ""; }
@@ -340,9 +341,7 @@ $("chips").addEventListener("click", e => {
   const l = b.dataset.line;
   cur.lines = cur.lines.includes(l) ? cur.lines.filter(x => x !== l) : [...cur.lines, l].sort(byLine);
   history.replaceState(null, "", "#" + stopHash(cur.id, cur.lines));
-  const f = favs.find(f => f.id === cur.id);
-  if(f){ f.lines = cur.lines; store.set("ratikka.favs", favs); }
-  renderChips(); renderBoard(); syncLive();
+  renderChips(); renderFavBtn(); renderBoard(); syncLive();
 });
 function renderBoard(){
   if(!cur || !cur.stop) return;
@@ -356,14 +355,14 @@ function renderBoard(){
   $("s-note").textContent = rows.some(x => !x.t.realtime && !x.e.cancel) ? "~ tarkoittaa aikataulun mukaista aikaa, ratikasta ei ole vielä seurantatietoa." : "";
 }
 function renderFavBtn(){
-  const on = !!(cur && favs.some(f => f.id === cur.id));
+  const on = !!(cur && favs.some(f => favKey(f) === favKey(cur)));
   $("fav").setAttribute("aria-pressed", on);
   $("fav").textContent = on ? "Suosikeissa – poista" : "Tallenna suosikiksi";
 }
 $("fav").onclick = () => {
   if(!cur || !cur.stop) return;
-  favs = favs.some(f => f.id === cur.id)
-    ? favs.filter(f => f.id !== cur.id)
+  favs = favs.some(f => favKey(f) === favKey(cur))
+    ? favs.filter(f => favKey(f) !== favKey(cur))
     : [...favs, {id: cur.id, name: cur.stop.name, code: cur.stop.code, lines: cur.lines}];
   store.set("ratikka.favs", favs); renderFavBtn();
 };
