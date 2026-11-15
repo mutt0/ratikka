@@ -155,7 +155,7 @@ button{cursor:pointer}
 const CONFIG = {
   API_URL: "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1",
   API_KEY: "",        // Liitä Digitransit-avain tähän, niin käyttäjiltä ei kysytä sitä.
-  PROXY_URL: "",      // Jos käytössä on oma välityspalvelin (esim. Cloudflare Worker), sen osoite. Avain jää silloin palvelimelle.
+  PROXY_URL: "https://ratikka.mikko-p-karkkainen.workers.dev",      // Jos käytössä on oma välityspalvelin (esim. Cloudflare Worker), sen osoite. Avain jää silloin palvelimelle.
   HFP_URL: "wss://mqtt.hsl.fi:443/",
   MODE: "TRAM",       // Vaihda esim. "BUS", jos haluat bussit.
   POLL_MS: 15000
