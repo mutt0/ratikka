@@ -34,6 +34,7 @@ button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
 [hidden]{display:none!important}
+.m-TRAM{--mc:var(--green)}.m-BUS{--mc:#007AC9}.m-SUBWAY{--mc:#CA4000}.m-RAIL{--mc:#8C4799}.m-FERRY{--mc:#007A97}
 
 .top{display:flex;align-items:center;gap:12px;padding:18px 0 14px}
 .top h1{font-family:var(--cond);font-weight:700;font-size:30px;line-height:1.05;margin:0;flex:1;letter-spacing:.2px}
@@ -45,7 +46,7 @@ button{cursor:pointer}
 
 /* Suosikit ja hakutulokset */
 .list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.item{display:block;width:100%;text-align:left;background:var(--surface);border:0;border-left:6px solid var(--green);
+.item{display:block;width:100%;text-align:left;background:var(--surface);border:0;border-left:6px solid var(--mc,var(--green));
   border-radius:4px 12px 12px 4px;padding:12px 14px}
 .item .name{font-family:var(--cond);font-weight:700;font-size:24px;line-height:1.1}
 .item .meta{color:var(--muted);font-size:15px}
@@ -55,13 +56,13 @@ button{cursor:pointer}
 
 /* Linjatunnus */
 .ln{display:inline-grid;place-items:center;min-width:2.1em;height:1.5em;padding:0 .3em;border-radius:6px;
-  background:var(--green);color:var(--green-ink);font-family:var(--cond);font-weight:700}
+  background:var(--mc,var(--green));color:var(--green-ink);font-family:var(--cond);font-weight:700}
 
 /* Linjavalinnat */
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
 .chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;min-height:40px;
   font-family:var(--cond);font-weight:700;font-size:20px}
-.chip[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:var(--green-ink)}
+.chip[aria-pressed="true"]{background:var(--mc,var(--green));border-color:var(--mc,var(--green));color:var(--green-ink)}
 
 /* Taulu */
 .board{background:var(--surface);border-radius:14px;overflow:hidden}
@@ -80,7 +81,7 @@ button{cursor:pointer}
 .note{color:var(--muted);font-size:14px;margin:8px 2px 0}
 
 #map{height:260px;border-radius:14px;margin-top:14px;background:var(--line);z-index:0}
-.veh{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;
+.veh{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--mc,var(--green));color:#fff;
   border:2px solid #fff;font-family:var(--cond);font-weight:700;font-size:16px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .actions{display:flex;gap:10px;margin-top:14px}
 .actions .btn{flex:1}
@@ -123,9 +124,10 @@ button{cursor:pointer}
       <h1>Hae pysäkki</h1>
     </div>
     <div class="search">
-      <input id="q" type="search" placeholder="Pysäkin nimi, esim. Ooppera" autocomplete="off" aria-label="Pysäkin nimi">
+      <input id="q" type="search" placeholder="Pysäkin tai aseman nimi" autocomplete="off" aria-label="Pysäkin nimi">
       <button class="btn" id="near">Lähellä</button>
     </div>
+    <div class="chips" id="modes" role="group" aria-label="Kulkuneuvo"></div>
     <ul class="list" id="results"></ul>
     <p class="empty" id="results-empty" hidden></p>
   </section>
@@ -157,7 +159,6 @@ const CONFIG = {
   API_KEY: "",        // Liitä Digitransit-avain tähän, niin käyttäjiltä ei kysytä sitä.
   PROXY_URL: "https://ratikka.mikko-p-karkkainen.workers.dev",      // Jos käytössä on oma välityspalvelin (esim. Cloudflare Worker), sen osoite. Avain jää silloin palvelimelle.
   HFP_URL: "wss://mqtt.hsl.fi:443/",
-  MODE: "TRAM",       // Vaihda esim. "BUS", jos haluat bussit.
   POLL_MS: 15000
 };
 
@@ -254,27 +255,43 @@ function renderHome(){
   $("favs-empty").hidden = favs.length > 0;
   $("favs").innerHTML = favs.map(f => {
     const next = upcoming(homeData[f.id], f.lines).filter(x => !x.e.cancel).slice(0, 3);
-    return `<li><button class="item" data-go="${esc(stopHash(f.id, f.lines))}">
+    return `<li><button class="item m-${esc(f.mode || "TRAM")}" data-go="${esc(stopHash(f.id, f.lines))}">
       <div class="name">${esc(f.name)}</div>
       <div class="meta">${esc(f.code || "")}${f.lines.length ? ", linjat " + esc(f.lines.join(", ")) : ", kaikki linjat"}</div>
-      <div class="next">${next.length ? next.map(x => `<span><span class="ln">${esc(x.t.trip.route.shortName)}</span> <b>${x.e.html.replace("<span>min</span>", " min")}</b></span>`).join("") : '<span class="meta">Ei lähtöjä juuri nyt</span>'}</div>
+      <div class="next">${next.length ? next.map(x => `<span><span class="ln m-${esc(x.t.trip.route.mode)}">${esc(x.t.trip.route.shortName)}</span> <b>${x.e.html.replace("<span>min</span>", " min")}</b></span>`).join("") : '<span class="meta">Ei lähtöjä juuri nyt</span>'}</div>
     </button></li>`;
   }).join("");
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if(b) location.hash = b.dataset.go; });
 
 /* ---------- Haku ---------- */
-function renderResults(stops, emptyText){
-  const list = stops.filter(s => s.vehicleMode === CONFIG.MODE);
+const MODES = [["TRAM","Ratikka"],["BUS","Bussi"],["SUBWAY","Metro"],["RAIL","Juna"],["FERRY","Lautta"]];
+let mode = store.get("ratikka.mode", "TRAM");
+let found = null;
+function renderModes(){
+  $("modes").innerHTML = MODES.map(([m, label]) =>
+    `<button class="chip m-${m}" data-mode="${m}" aria-pressed="${m === mode}">${label}</button>`).join("");
+}
+$("modes").addEventListener("click", e => {
+  const b = e.target.closest("[data-mode]"); if(!b) return;
+  mode = b.dataset.mode; store.set("ratikka.mode", mode); renderModes(); renderResults();
+});
+renderModes();
+function renderResults(){
+  if(!found){ $("results").innerHTML = ""; $("results-empty").hidden = true; return; }
+  const list = found.filter(s => s.vehicleMode === mode);
+  const label = MODES.find(m => m[0] === mode)[1].toLowerCase();
   $("results-empty").hidden = list.length > 0;
-  $("results-empty").textContent = emptyText;
+  $("results-empty").textContent = found.length
+    ? "Ei osumia kulkuneuvolle " + label + ". Vaihda kulkuneuvoa yltä tai kokeile toista nimeä."
+    : "Ei osumia. Kokeile nimen alkua.";
   $("results").innerHTML = list.slice(0, 30).map(s => {
-    const lines = [...new Set(s.routes.filter(r => r.mode === CONFIG.MODE).map(r => r.shortName))].sort(byLine);
+    const lines = [...new Set(s.routes.filter(r => r.mode === mode).map(r => r.shortName))].sort(byLine);
     const heads = [...new Set((s.patterns || []).map(p => p.headsign).filter(Boolean))].slice(0, 3);
-    return `<li><button class="item" data-go="${esc(stopHash(s.gtfsId))}">
+    return `<li><button class="item m-${esc(s.vehicleMode)}" data-go="${esc(stopHash(s.gtfsId))}">
       <div class="name">${esc(s.name)}</div>
-      <div class="meta">${esc(s.code || "")}${s._dist != null ? ", " + s._dist + " m" : ""}</div>
-      <div class="next">${lines.map(l => `<span class="ln">${esc(l)}</span>`).join("")}</div>
+      <div class="meta">${esc([s.code, s.platformCode ? "laituri " + s.platformCode : "", s._dist != null ? s._dist + " m" : ""].filter(Boolean).join(", "))}</div>
+      <div class="next">${lines.slice(0, 14).map(l => `<span class="ln">${esc(l)}</span>`).join("")}</div>
       ${heads.length ? `<div class="meta">Suuntaan ${esc(heads.join(", "))}</div>` : ""}
     </button></li>`;
   }).join("");
@@ -283,11 +300,11 @@ let qTimer;
 $("q").addEventListener("input", () => {
   clearTimeout(qTimer);
   const q = $("q").value.trim();
-  if(q.length < 2){ $("results").innerHTML = ""; $("results-empty").hidden = true; return; }
+  if(q.length < 2){ found = null; renderResults(); return; }
   qTimer = setTimeout(async () => {
     try{
       const d = await gql(`query($q:String!){ stops(name:$q){ ${STOP_FIELDS} } }`, {q});
-      if($("q").value.trim() === q) renderResults(d.stops || [], "Tällä nimellä ei löytynyt ratikkapysäkkiä. Kokeile nimen alkua.");
+      if($("q").value.trim() === q){ found = d.stops || []; renderResults(); }
     }catch(e){}
   }, 300);
 });
@@ -295,9 +312,9 @@ $("near").onclick = () => {
   if(!navigator.geolocation){ showErr("Tämä selain ei tue paikannusta. Hae pysäkki nimellä."); return; }
   navigator.geolocation.getCurrentPosition(async pos => {
     try{
-      const d = await gql(`query($lat:Float!,$lon:Float!){ stopsByRadius(lat:$lat, lon:$lon, radius:700, first:60){ edges{ node{ distance stop{ ${STOP_FIELDS} } } } } }`,
+      const d = await gql(`query($lat:Float!,$lon:Float!){ stopsByRadius(lat:$lat, lon:$lon, radius:700, first:120){ edges{ node{ distance stop{ ${STOP_FIELDS} } } } } }`,
         {lat: pos.coords.latitude, lon: pos.coords.longitude});
-      renderResults(d.stopsByRadius.edges.map(e => Object.assign(e.node.stop, {_dist: e.node.distance})), "700 metrin säteellä ei ole ratikkapysäkkiä.");
+      found = d.stopsByRadius.edges.map(e => Object.assign(e.node.stop, {_dist: e.node.distance})); renderResults();
     }catch(e){}
   }, () => showErr("Paikannus ei onnistunut. Salli sijainti selaimen asetuksista tai hae nimellä."), {timeout: 8000});
 };
@@ -313,7 +330,7 @@ function openStop(id, lines){
   const load = async () => {
     const mine = cur;
     try{
-      const d = await gql(`query($id:String!){ stop(id:$id){ gtfsId name code platformCode lat lon routes{ shortName mode } ${TIMES} } }`, {id});
+      const d = await gql(`query($id:String!){ stop(id:$id){ gtfsId name code platformCode vehicleMode lat lon routes{ shortName mode } ${TIMES} } }`, {id});
       if(cur !== mine) return;
       if(!d.stop){ $("s-name").firstChild.textContent = "Pysäkkiä ei löytynyt"; return; }
       const first = !cur.stop;
@@ -328,6 +345,7 @@ function renderStopHead(){
   const s = cur.stop;
   $("s-name").firstChild.textContent = s.name;
   $("s-meta").textContent = [s.code, s.platformCode ? "laituri " + s.platformCode : ""].filter(Boolean).join(", ");
+  $("v-stop").className = "m-" + (s.vehicleMode || "TRAM");
   document.title = s.name + " – Ratikkataulu";
   renderChips(); renderFavBtn();
 }
@@ -348,7 +366,7 @@ function renderBoard(){
   const rows = upcoming(cur.times, cur.lines).slice(0, 7);
   $("board").innerHTML = rows.length ? rows.map(x =>
     `<div class="row${x.t.realtime ? "" : " sched"}${x.e.cancel ? " cancel" : ""}">
-      <span class="ln">${esc(x.t.trip.route.shortName)}</span>
+      <span class="ln m-${esc(x.t.trip.route.mode)}">${esc(x.t.trip.route.shortName)}</span>
       <span class="to">${esc(x.t.headsign || "")}</span>
       <span class="min">${x.e.html}</span>
     </div>`).join("") : '<p class="empty" style="padding:20px 14px;margin:0">Ei tulevia lähtöjä valituilla linjoilla.</p>';
@@ -363,7 +381,7 @@ $("fav").onclick = () => {
   if(!cur || !cur.stop) return;
   favs = favs.some(f => favKey(f) === favKey(cur))
     ? favs.filter(f => favKey(f) !== favKey(cur))
-    : [...favs, {id: cur.id, name: cur.stop.name, code: cur.stop.code, lines: cur.lines}];
+    : [...favs, {id: cur.id, name: cur.stop.name, code: cur.stop.code, mode: cur.stop.vehicleMode, lines: cur.lines}];
   store.set("ratikka.favs", favs); renderFavBtn();
 };
 $("share").onclick = async () => {
@@ -375,7 +393,7 @@ $("share").onclick = async () => {
 };
 
 /* ---------- Live-sijainnit (HSL HFP, MQTT) ---------- */
-let map = null, mq = null, subs = new Set(), vehicles = {};
+let map = null, mq = null, subs = new Set(), vehicles = {}, live = {routes: new Set(), names: {}};
 function startLive(){
   if(!window.L){ $("map").hidden = true; return; }
   $("map").hidden = false;
@@ -390,11 +408,12 @@ function startLive(){
       let vp; try{ vp = JSON.parse(payload.toString()).VP; }catch(e){ return; }
       if(!vp || vp.lat == null || vp.long == null || !map) return;
       const id = vp.oper + "/" + vp.veh;
-      if(cur.lines.length && !cur.lines.includes(vp.desi)){ dropVehicle(id); return; }
+      const rid = String(vp.route || topic.split("/")[9]);
+      if(!live.routes.has(rid)){ dropVehicle(id); return; }
       let v = vehicles[id];
       if(!v){
         v = vehicles[id] = {m: L.marker([vp.lat, vp.long], {interactive: false,
-          icon: L.divIcon({className: "", iconSize: [30, 30], html: `<div class="veh">${esc(vp.desi)}</div>`})}).addTo(map)};
+          icon: L.divIcon({className: "", iconSize: [30, 30], html: `<div class="veh">${esc(live.names[rid] || vp.desi)}</div>`})}).addTo(map), route: rid};
       }else v.m.setLatLng([vp.lat, vp.long]);
       v.seen = Date.now();
     });
@@ -405,21 +424,24 @@ function dropVehicle(id){ if(vehicles[id]){ vehicles[id].m.remove(); delete vehi
 function syncLive(){
   if(!mq || !cur) return;
   // Tilataan vain ne linjat ja suunnat, jotka oikeasti kulkevat tämän pysäkin kautta.
-  const want = new Set();
+  const want = new Set(), routes = new Set(), names = {};
   cur.times.forEach(t => {
     const r = t.trip.route;
     if(cur.lines.length && !cur.lines.includes(r.shortName)) return;
     const dir = parseInt(t.trip.directionId, 10);
     if(isNaN(dir)) return;
-    want.add(`/hfp/v2/journey/ongoing/vp/+/+/+/${r.gtfsId.split(":")[1]}/${dir + 1}/#`);
+    const rid = r.gtfsId.split(":")[1];
+    routes.add(rid); names[rid] = r.shortName;
+    want.add(`/hfp/v2/journey/ongoing/vp/+/+/+/${rid}/${dir + 1}/#`);
   });
+  live = {routes, names};
   subs.forEach(t => { if(!want.has(t)){ mq.unsubscribe(t); subs.delete(t); } });
   want.forEach(t => { if(!subs.has(t)){ subs.add(t); if(mq.connected) mq.subscribe(t); } });
-  for(const id in vehicles) if(cur.lines.length && !cur.lines.includes(vehicles[id].m.getElement()?.textContent)) dropVehicle(id);
+  for(const id in vehicles) if(!routes.has(vehicles[id].route)) dropVehicle(id);
 }
 function stopLive(){
   if(mq){ try{ mq.end(true); }catch(e){} mq = null; }
-  subs = new Set(); vehicles = {};
+  subs = new Set(); vehicles = {}; live = {routes: new Set(), names: {}};
   if(map){ map.remove(); map = null; }
   document.title = "Ratikkataulu";
 }
