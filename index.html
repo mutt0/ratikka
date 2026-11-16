@@ -92,6 +92,9 @@ button{cursor:pointer}
 .msg{background:var(--surface);border-left:6px solid var(--yellow);border-radius:4px 12px 12px 4px;padding:12px 14px;margin:0 0 14px}
 .msg p{margin:0 0 8px}
 .msg a{color:inherit}
+.langs{display:flex;gap:8px;margin-top:24px}
+.langs .btn{min-height:40px;padding:6px 14px;font-size:15px}
+#favs-empty.note{margin-top:16px}
 </style>
 </head>
 <body>
@@ -99,8 +102,7 @@ button{cursor:pointer}
 
   <!-- Avain puuttuu -->
   <div class="msg" id="keybox" hidden>
-    <p><strong>Tarvitaan Digitransit-avain.</strong> Ilmaisen avaimen saa rekisteröitymällä
-      <a href="https://digitransit.fi/en/developers/" target="_blank" rel="noopener">Digitransitin kehittäjäsivuilla</a>.</p>
+    <p id="k-p"></p>
     <div class="search">
       <input id="keyinput" placeholder="Liitä avain tähän" autocomplete="off" aria-label="Digitransit-avain">
       <button class="btn primary" id="keysave">Tallenna avain</button>
@@ -115,14 +117,15 @@ button{cursor:pointer}
       <button class="btn primary" id="go-search">Lisää pysäkki</button>
     </div>
     <ul class="list" id="favs"></ul>
-    <p class="empty" id="favs-empty" hidden>Ei vielä pysäkkejä. Lisää ensimmäinen, niin se pysyy tässä laitteessa muistissa.</p>
+    <p class="empty" id="favs-empty"></p>
+    <div class="langs" id="langs" role="group" aria-label="Kieli, språk, language"></div>
   </section>
 
   <!-- Haku -->
   <section id="v-search" hidden>
     <div class="top">
-      <button class="btn plain" data-home aria-label="Takaisin">‹ Takaisin</button>
-      <h1>Hae pysäkki</h1>
+      <button class="btn plain" id="back1" data-home aria-label="Takaisin">‹ Takaisin</button>
+      <h1 id="search-h">Hae pysäkki</h1>
     </div>
     <div class="search">
       <input id="q" type="search" placeholder="Pysäkin tai aseman nimi" autocomplete="off" aria-label="Pysäkin nimi">
@@ -173,6 +176,95 @@ const store = {
 const byLine = (a, b) => (parseInt(a) - parseInt(b)) || String(a).localeCompare(String(b));
 let favs = store.get("ratikka.favs", []);
 const favKey = f => f.id + "|" + [...(f.lines || [])].sort(byLine).join(",");
+/* ---------- Kielet ---------- */
+const DEV = 'href="https://digitransit.fi/en/developers/" target="_blank" rel="noopener"';
+const TXT = {
+  fi: {
+    keyHtml: `<strong>Tarvitaan Digitransit-avain.</strong> Ilmaisen avaimen saa rekisteröitymällä <a ${DEV}>Digitransitin kehittäjäsivuilla</a>.`,
+    keyPh: "Liitä avain tähän", keySave: "Tallenna avain", addStop: "Lisää pysäkki",
+    emptyFavs: "Ei vielä pysäkkejä. Paina Lisää pysäkki, hae pysäkki ja valitse linjat. Paina sitten Tallenna suosikiksi, niin taulu pysyy tässä laitteessa muistissa.",
+    hint: "Uusi taulu: paina Lisää pysäkki, valitse linjat ja paina Tallenna suosikiksi. Samasta pysäkistä voi tallentaa useita tauluja eri linjoilla.",
+    back: "Takaisin", searchTitle: "Hae pysäkki", searchPh: "Pysäkin tai aseman nimi", near: "Lähellä",
+    modeAria: "Kulkuneuvo", linesAria: "Näytettävät linjat", mapAria: "Ajoneuvojen sijainnit kartalla",
+    favSave: "Tallenna suosikiksi", favOn: "Suosikeissa – poista", share: "Jaa linkki", copied: "Linkki kopioitu",
+    errNet: "Ei yhteyttä. Tarkista verkko, tiedot päivittyvät kun yhteys palaa.",
+    errKey: "Avain ei kelpaa. Tarkista se ja tallenna uudelleen.",
+    errHttp: "Aikataulupalvelu ei vastaa (virhe {n}). Yritetään pian uudelleen.", errGql: "Haku epäonnistui: ",
+    cancelled: "peruttu", now: "nyt", lines: "linjat", allLines: "kaikki linjat", noDeps: "Ei lähtöjä juuri nyt",
+    modes: {TRAM: "Ratikka", BUS: "Bussi", SUBWAY: "Metro", RAIL: "Juna", FERRY: "Lautta"},
+    noHitsMode: "Ei osumia kulkuneuvolle {m}. Vaihda kulkuneuvoa yltä tai kokeile toista nimeä.", noHits: "Ei osumia. Kokeile nimen alkua.",
+    platform: "laituri", toward: "Suuntaan",
+    errNoGeo: "Tämä selain ei tue paikannusta. Hae pysäkki nimellä.",
+    errGeo: "Paikannus ei onnistunut. Salli sijainti selaimen asetuksista tai hae nimellä.",
+    loading: "Haetaan…", notFound: "Pysäkkiä ei löytynyt", noUpcoming: "Ei tulevia lähtöjä valituilla linjoilla.",
+    schedNote: "~ tarkoittaa aikataulun mukaista aikaa, ajoneuvosta ei ole vielä seurantatietoa."
+  },
+  sv: {
+    keyHtml: `<strong>En Digitransit-nyckel behövs.</strong> En gratis nyckel får du genom att registrera dig på <a ${DEV}>Digitransits utvecklarsidor</a>.`,
+    keyPh: "Klistra in nyckeln här", keySave: "Spara nyckeln", addStop: "Lägg till hållplats",
+    emptyFavs: "Inga hållplatser ännu. Tryck på Lägg till hållplats, sök en hållplats och välj linjer. Tryck sedan på Spara som favorit, så finns tavlan kvar på den här enheten.",
+    hint: "Ny tavla: tryck på Lägg till hållplats, välj linjer och tryck på Spara som favorit. Du kan spara flera tavlor för samma hållplats med olika linjer.",
+    back: "Tillbaka", searchTitle: "Sök hållplats", searchPh: "Hållplatsens eller stationens namn", near: "Nära mig",
+    modeAria: "Färdmedel", linesAria: "Linjer som visas", mapAria: "Fordonens position på kartan",
+    favSave: "Spara som favorit", favOn: "Favorit – ta bort", share: "Dela länk", copied: "Länken kopierad",
+    errNet: "Ingen anslutning. Kontrollera nätet, uppgifterna uppdateras när anslutningen är tillbaka.",
+    errKey: "Nyckeln är ogiltig. Kontrollera den och spara på nytt.",
+    errHttp: "Tidtabellstjänsten svarar inte (fel {n}). Vi försöker snart igen.", errGql: "Sökningen misslyckades: ",
+    cancelled: "inställd", now: "nu", lines: "linjer", allLines: "alla linjer", noDeps: "Inga avgångar just nu",
+    modes: {TRAM: "Spårvagn", BUS: "Buss", SUBWAY: "Metro", RAIL: "Tåg", FERRY: "Färja"},
+    noHitsMode: "Inga träffar för färdmedlet {m}. Byt färdmedel ovan eller prova ett annat namn.", noHits: "Inga träffar. Prova början av namnet.",
+    platform: "plattform", toward: "Mot",
+    errNoGeo: "Den här webbläsaren stöder inte positionering. Sök hållplatsen med namn.",
+    errGeo: "Positioneringen misslyckades. Tillåt platsåtkomst i webbläsarens inställningar eller sök med namn.",
+    loading: "Söker…", notFound: "Hållplatsen hittades inte", noUpcoming: "Inga kommande avgångar för de valda linjerna.",
+    schedNote: "~ betyder tid enligt tidtabell, fordonet har ännu ingen realtidsuppföljning."
+  },
+  en: {
+    keyHtml: `<strong>A Digitransit key is needed.</strong> You can get a free key by registering on the <a ${DEV}>Digitransit developer pages</a>.`,
+    keyPh: "Paste the key here", keySave: "Save key", addStop: "Add stop",
+    emptyFavs: "No stops yet. Tap Add stop, search for a stop and choose the lines. Then tap Save as favourite and the board stays on this device.",
+    hint: "New board: tap Add stop, choose the lines and tap Save as favourite. You can save several boards for the same stop with different lines.",
+    back: "Back", searchTitle: "Find a stop", searchPh: "Stop or station name", near: "Nearby",
+    modeAria: "Vehicle type", linesAria: "Lines shown", mapAria: "Vehicle positions on the map",
+    favSave: "Save as favourite", favOn: "Saved – remove", share: "Share link", copied: "Link copied",
+    errNet: "No connection. Check your network; times update when the connection returns.",
+    errKey: "The key is not valid. Check it and save again.",
+    errHttp: "The timetable service is not responding (error {n}). Trying again soon.", errGql: "Search failed: ",
+    cancelled: "cancelled", now: "now", lines: "lines", allLines: "all lines", noDeps: "No departures right now",
+    modes: {TRAM: "Tram", BUS: "Bus", SUBWAY: "Metro", RAIL: "Train", FERRY: "Ferry"},
+    noHitsMode: "No results for {m}. Change the vehicle type above or try another name.", noHits: "No results. Try the start of the name.",
+    platform: "platform", toward: "Towards",
+    errNoGeo: "This browser does not support location. Search for the stop by name.",
+    errGeo: "Could not get your location. Allow location in the browser settings or search by name.",
+    loading: "Loading…", notFound: "Stop not found", noUpcoming: "No upcoming departures for the selected lines.",
+    schedNote: "~ means a scheduled time; the vehicle has no live tracking yet."
+  }
+};
+const navLang = (navigator.language || "fi").toLowerCase();
+let lang = store.get("ratikka.lang", null) || (navLang.startsWith("fi") ? "fi" : navLang.startsWith("sv") ? "sv" : "en");
+if(!TXT[lang]) lang = "fi";
+const tr = k => TXT[lang][k];
+function applyLang(){
+  document.documentElement.lang = lang;
+  $("k-p").innerHTML = tr("keyHtml");
+  $("keyinput").placeholder = tr("keyPh"); $("keysave").textContent = tr("keySave");
+  $("go-search").textContent = tr("addStop");
+  $("back1").textContent = "‹ " + tr("back");
+  document.querySelectorAll("[data-home]").forEach(b => b.setAttribute("aria-label", tr("back")));
+  $("search-h").textContent = tr("searchTitle");
+  $("q").placeholder = tr("searchPh"); $("q").setAttribute("aria-label", tr("searchPh"));
+  $("near").textContent = tr("near");
+  $("modes").setAttribute("aria-label", tr("modeAria")); $("chips").setAttribute("aria-label", tr("linesAria"));
+  $("map").setAttribute("aria-label", tr("mapAria"));
+  $("share").textContent = tr("share");
+  $("langs").innerHTML = ["fi", "sv", "en"].map(l =>
+    `<button class="btn" data-lang="${l}" aria-pressed="${l === lang}">${l.toUpperCase()}</button>`).join("");
+}
+$("langs").addEventListener("click", e => {
+  const b = e.target.closest("[data-lang]"); if(!b) return;
+  lang = b.dataset.lang; store.set("ratikka.lang", lang);
+  homeNames = {}; applyLang(); renderModes(); route();
+});
 let timers = [];
 const every = (fn, ms) => timers.push(setInterval(fn, ms));
 function showErr(text){ const b = $("errbox"); b.hidden = !text; b.textContent = text || ""; }
@@ -188,27 +280,33 @@ async function gql(query, variables){
   let res;
   try{
     res = await fetch(CONFIG.PROXY_URL || CONFIG.API_URL, {method:"POST", headers, body:JSON.stringify({query, variables})});
-  }catch(e){ showErr("Ei yhteyttä. Tarkista verkko, tiedot päivittyvät kun yhteys palaa."); throw e; }
+  }catch(e){ showErr(tr("errNet")); throw e; }
   if(res.status === 401 || res.status === 403){
-    $("keybox").hidden = false; showErr("Avain ei kelpaa. Tarkista se ja tallenna uudelleen."); throw new Error("auth");
+    $("keybox").hidden = false; showErr(tr("errKey")); throw new Error("auth");
   }
-  if(!res.ok){ showErr("Aikataulupalvelu ei vastaa (virhe " + res.status + "). Yritetään pian uudelleen."); throw new Error("http"); }
+  if(!res.ok){ showErr(tr("errHttp").replace("{n}", res.status)); throw new Error("http"); }
   const json = await res.json();
-  if(json.errors && !json.data){ showErr("Haku epäonnistui: " + json.errors[0].message); throw new Error("gql"); }
+  if(json.errors && !json.data){
+    if(!transOff && /language/i.test(json.errors[0].message || "")) transOff = true;  // rajapinta ei tue käännöksiä: seuraava haku tehdään ilman
+    showErr(tr("errGql") + json.errors[0].message); throw new Error("gql");
+  }
   showErr(""); $("keybox").hidden = true;
   return json.data;
 }
-const TIMES = `stoptimesWithoutPatterns(numberOfDepartures: 30){
-  serviceDay scheduledArrival realtimeArrival realtime realtimeState headsign
+// Nimet ja määränpäät pyydetään käyttöliittymän kielellä (HSL:n datassa on ruotsin- ja englanninkieliset käännökset).
+let transOff = false;
+const LA = () => (lang === "fi" || transOff) ? "" : `(language: "${lang}")`;
+const TIMES = () => `stoptimesWithoutPatterns(numberOfDepartures: 30){
+  serviceDay scheduledArrival realtimeArrival realtime realtimeState headsign${LA()}
   trip{ directionId route{ gtfsId shortName mode } } }`;
-const STOP_FIELDS = `gtfsId name code platformCode vehicleMode routes{ shortName mode } patterns{ headsign }`;
+const STOP_FIELDS = () => `gtfsId name${LA()} code platformCode vehicleMode routes{ shortName mode } patterns{ headsign }`;
 
 /* ---------- Ajat ---------- */
 function eta(t){
   const sec = t.serviceDay + t.realtimeArrival - Date.now()/1000;
-  if(t.realtimeState === "CANCELED") return {html:"peruttu", cancel:true, sec};
+  if(t.realtimeState === "CANCELED") return {html: tr("cancelled"), cancel:true, sec};
   const pre = t.realtime ? "" : "~";
-  if(sec < 45) return {html:"nyt", sec};
+  if(sec < 45) return {html: tr("now"), sec};
   if(sec < 3600) return {html: pre + Math.floor(sec/60) + "<span>min</span>", sec};
   const d = new Date((t.serviceDay + t.realtimeArrival) * 1000);
   return {html: pre + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"), sec};
@@ -241,37 +339,38 @@ $("go-search").onclick = () => { location.hash = "haku"; };
 $("keysave").onclick = () => { const v = $("keyinput").value.trim(); if(v){ store.set("ratikka.key", v); $("keybox").hidden = true; route(); } };
 
 /* ---------- Etusivu ---------- */
-let homeData = {};
+let homeData = {}, homeNames = {};
 function openHome(){
   $("v-home").hidden = false;
   renderHome();
   if(!favs.length) return;
   const load = async () => {
-    const q = "{" + favs.map((f, i) => `s${i}: stop(id: ${JSON.stringify(f.id)}){ ${TIMES} }`).join(" ") + "}";
-    try{ const d = await gql(q); favs.forEach((f, i) => homeData[f.id] = d["s" + i] ? d["s" + i].stoptimesWithoutPatterns : []); renderHome(); }catch(e){}
+    const q = "{" + favs.map((f, i) => `s${i}: stop(id: ${JSON.stringify(f.id)}){ ...T }`).join(" ") + `} fragment T on Stop { name${LA()} ${TIMES()} }`;
+    try{ const d = await gql(q); favs.forEach((f, i) => { const st = d["s" + i]; homeData[f.id] = st ? st.stoptimesWithoutPatterns : []; if(st) homeNames[f.id] = st.name; }); renderHome(); }catch(e){}
   };
   load(); every(load, CONFIG.POLL_MS); every(renderHome, 5000);
 }
 function renderHome(){
-  $("favs-empty").hidden = favs.length > 0;
+  $("favs-empty").className = favs.length ? "note" : "empty";
+  $("favs-empty").textContent = tr(favs.length ? "hint" : "emptyFavs");
   $("favs").innerHTML = favs.map(f => {
     const next = upcoming(homeData[f.id], f.lines).filter(x => !x.e.cancel).slice(0, 3);
     return `<li><button class="item m-${esc(f.mode || "TRAM")}" data-go="${esc(stopHash(f.id, f.lines))}">
-      <div class="name">${esc(f.name)}</div>
-      <div class="meta">${esc(f.code || "")}${f.lines.length ? ", linjat " + esc(f.lines.join(", ")) : ", kaikki linjat"}</div>
-      <div class="next">${next.length ? next.map(x => `<span><span class="ln m-${esc(x.t.trip.route.mode)}">${esc(x.t.trip.route.shortName)}</span> <b>${x.e.html.replace("<span>min</span>", " min")}</b></span>`).join("") : '<span class="meta">Ei lähtöjä juuri nyt</span>'}</div>
+      <div class="name">${esc(homeNames[f.id] || f.name)}</div>
+      <div class="meta">${esc(f.code || "")}${f.lines.length ? ", " + tr("lines") + " " + esc(f.lines.join(", ")) : ", " + tr("allLines")}</div>
+      <div class="next">${next.length ? next.map(x => `<span><span class="ln m-${esc(x.t.trip.route.mode)}">${esc(x.t.trip.route.shortName)}</span> <b>${x.e.html.replace("<span>min</span>", " min")}</b></span>`).join("") : '<span class="meta">' + tr("noDeps") + '</span>'}</div>
     </button></li>`;
   }).join("");
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if(b) location.hash = b.dataset.go; });
 
 /* ---------- Haku ---------- */
-const MODES = [["TRAM","Ratikka"],["BUS","Bussi"],["SUBWAY","Metro"],["RAIL","Juna"],["FERRY","Lautta"]];
+const MODES = ["TRAM", "BUS", "SUBWAY", "RAIL", "FERRY"];
 let mode = store.get("ratikka.mode", "TRAM");
 let found = null;
 function renderModes(){
-  $("modes").innerHTML = MODES.map(([m, label]) =>
-    `<button class="chip m-${m}" data-mode="${m}" aria-pressed="${m === mode}">${label}</button>`).join("");
+  $("modes").innerHTML = MODES.map(m =>
+    `<button class="chip m-${m}" data-mode="${m}" aria-pressed="${m === mode}">${tr("modes")[m]}</button>`).join("");
 }
 $("modes").addEventListener("click", e => {
   const b = e.target.closest("[data-mode]"); if(!b) return;
@@ -281,19 +380,19 @@ renderModes();
 function renderResults(){
   if(!found){ $("results").innerHTML = ""; $("results-empty").hidden = true; return; }
   const list = found.filter(s => s.vehicleMode === mode);
-  const label = MODES.find(m => m[0] === mode)[1].toLowerCase();
+  const label = tr("modes")[mode].toLowerCase();
   $("results-empty").hidden = list.length > 0;
   $("results-empty").textContent = found.length
-    ? "Ei osumia kulkuneuvolle " + label + ". Vaihda kulkuneuvoa yltä tai kokeile toista nimeä."
-    : "Ei osumia. Kokeile nimen alkua.";
+    ? tr("noHitsMode").replace("{m}", label)
+    : tr("noHits");
   $("results").innerHTML = list.slice(0, 30).map(s => {
     const lines = [...new Set(s.routes.filter(r => r.mode === mode).map(r => r.shortName))].sort(byLine);
     const heads = [...new Set((s.patterns || []).map(p => p.headsign).filter(Boolean))].slice(0, 3);
     return `<li><button class="item m-${esc(s.vehicleMode)}" data-go="${esc(stopHash(s.gtfsId))}">
       <div class="name">${esc(s.name)}</div>
-      <div class="meta">${esc([s.code, s.platformCode ? "laituri " + s.platformCode : "", s._dist != null ? s._dist + " m" : ""].filter(Boolean).join(", "))}</div>
+      <div class="meta">${esc([s.code, s.platformCode ? tr("platform") + " " + s.platformCode : "", s._dist != null ? s._dist + " m" : ""].filter(Boolean).join(", "))}</div>
       <div class="next">${lines.slice(0, 14).map(l => `<span class="ln">${esc(l)}</span>`).join("")}</div>
-      ${heads.length ? `<div class="meta">Suuntaan ${esc(heads.join(", "))}</div>` : ""}
+      ${heads.length ? `<div class="meta">${tr("toward")} ${esc(heads.join(", "))}</div>` : ""}
     </button></li>`;
   }).join("");
 }
@@ -304,20 +403,20 @@ $("q").addEventListener("input", () => {
   if(q.length < 2){ found = null; renderResults(); return; }
   qTimer = setTimeout(async () => {
     try{
-      const d = await gql(`query($q:String!){ stops(name:$q){ ${STOP_FIELDS} } }`, {q});
+      const d = await gql(`query($q:String!){ stops(name:$q){ ${STOP_FIELDS()} } }`, {q});
       if($("q").value.trim() === q){ found = d.stops || []; renderResults(); }
     }catch(e){}
   }, 300);
 });
 $("near").onclick = () => {
-  if(!navigator.geolocation){ showErr("Tämä selain ei tue paikannusta. Hae pysäkki nimellä."); return; }
+  if(!navigator.geolocation){ showErr(tr("errNoGeo")); return; }
   navigator.geolocation.getCurrentPosition(async pos => {
     try{
-      const d = await gql(`query($lat:Float!,$lon:Float!){ stopsByRadius(lat:$lat, lon:$lon, radius:700, first:120){ edges{ node{ distance stop{ ${STOP_FIELDS} } } } } }`,
+      const d = await gql(`query($lat:Float!,$lon:Float!){ stopsByRadius(lat:$lat, lon:$lon, radius:700, first:120){ edges{ node{ distance stop{ ${STOP_FIELDS()} } } } } }`,
         {lat: pos.coords.latitude, lon: pos.coords.longitude});
       found = d.stopsByRadius.edges.map(e => Object.assign(e.node.stop, {_dist: e.node.distance})); renderResults();
     }catch(e){}
-  }, () => showErr("Paikannus ei onnistunut. Salli sijainti selaimen asetuksista tai hae nimellä."), {timeout: 8000});
+  }, () => showErr(tr("errGeo")), {timeout: 8000});
 };
 
 /* ---------- Pysäkkinäkymä ---------- */
@@ -325,15 +424,15 @@ let cur = null;
 function openStop(id, lines){
   cur = {id, lines, stop: null, times: []};
   $("v-stop").hidden = false;
-  $("s-name").firstChild.textContent = "Haetaan…"; $("s-meta").textContent = "";
+  $("s-name").firstChild.textContent = tr("loading"); $("s-meta").textContent = "";
   $("board").innerHTML = ""; $("chips").innerHTML = ""; $("s-note").textContent = "";
   renderFavBtn();
   const load = async () => {
     const mine = cur;
     try{
-      const d = await gql(`query($id:String!){ stop(id:$id){ gtfsId name code platformCode vehicleMode lat lon routes{ shortName mode } ${TIMES} } }`, {id});
+      const d = await gql(`query($id:String!){ stop(id:$id){ gtfsId name${LA()} code platformCode vehicleMode lat lon routes{ shortName mode } ${TIMES()} } }`, {id});
       if(cur !== mine) return;
-      if(!d.stop){ $("s-name").firstChild.textContent = "Pysäkkiä ei löytynyt"; return; }
+      if(!d.stop){ $("s-name").firstChild.textContent = tr("notFound"); return; }
       const first = !cur.stop;
       cur.stop = d.stop; cur.times = d.stop.stoptimesWithoutPatterns || [];
       if(first){ renderStopHead(); startLive(); }
@@ -345,7 +444,7 @@ function openStop(id, lines){
 function renderStopHead(){
   const s = cur.stop;
   $("s-name").firstChild.textContent = s.name;
-  $("s-meta").textContent = [s.code, s.platformCode ? "laituri " + s.platformCode : ""].filter(Boolean).join(", ");
+  $("s-meta").textContent = [s.code, s.platformCode ? tr("platform") + " " + s.platformCode : ""].filter(Boolean).join(", ");
   $("v-stop").className = "m-" + (s.vehicleMode || "TRAM");
   document.title = s.name + " – Pysäkkitaulut";
   renderChips(); renderFavBtn();
@@ -370,13 +469,13 @@ function renderBoard(){
       <span class="ln m-${esc(x.t.trip.route.mode)}">${esc(x.t.trip.route.shortName)}</span>
       <span class="to">${esc(x.t.headsign || "")}</span>
       <span class="min">${x.e.html}</span>
-    </div>`).join("") : '<p class="empty" style="padding:20px 14px;margin:0">Ei tulevia lähtöjä valituilla linjoilla.</p>';
-  $("s-note").textContent = rows.some(x => !x.t.realtime && !x.e.cancel) ? "~ tarkoittaa aikataulun mukaista aikaa, ratikasta ei ole vielä seurantatietoa." : "";
+    </div>`).join("") : '<p class="empty" style="padding:20px 14px;margin:0">' + tr("noUpcoming") + '</p>';
+  $("s-note").textContent = rows.some(x => !x.t.realtime && !x.e.cancel) ? tr("schedNote") : "";
 }
 function renderFavBtn(){
   const on = !!(cur && favs.some(f => favKey(f) === favKey(cur)));
   $("fav").setAttribute("aria-pressed", on);
-  $("fav").textContent = on ? "Suosikeissa – poista" : "Tallenna suosikiksi";
+  $("fav").textContent = on ? tr("favOn") : tr("favSave");
 }
 $("fav").onclick = () => {
   if(!cur || !cur.stop) return;
@@ -389,7 +488,7 @@ $("share").onclick = async () => {
   const url = location.origin + location.pathname + "#" + stopHash(cur.id, cur.lines);
   try{
     if(navigator.share) await navigator.share({title: cur.stop ? cur.stop.name : "Pysäkkitaulut", url});
-    else{ await navigator.clipboard.writeText(url); $("share").textContent = "Linkki kopioitu"; setTimeout(() => $("share").textContent = "Jaa linkki", 2000); }
+    else{ await navigator.clipboard.writeText(url); $("share").textContent = tr("copied"); setTimeout(() => $("share").textContent = tr("share"), 2000); }
   }catch(e){}
 };
 
@@ -447,6 +546,7 @@ function stopLive(){
   document.title = "Pysäkkitaulut";
 }
 
+applyLang();
 route();
 </script>
 </body>
