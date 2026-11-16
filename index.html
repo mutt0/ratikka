@@ -10,6 +10,7 @@
 <title>Pysäkkitaulut</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
@@ -92,6 +93,7 @@ button{cursor:pointer}
 .msg{background:var(--surface);border-left:6px solid var(--yellow);border-radius:4px 12px 12px 4px;padding:12px 14px;margin:0 0 14px}
 .msg p{margin:0 0 8px}
 .msg a{color:inherit}
+.foot{color:var(--muted);font-size:13px;line-height:1.4;margin-top:28px}
 .langs{display:flex;gap:8px;margin-top:24px}
 .langs .btn{min-height:40px;padding:6px 14px;font-size:15px}
 #favs-empty.note{margin-top:16px}
@@ -152,6 +154,8 @@ button{cursor:pointer}
     </div>
   </section>
 
+  <footer class="foot" id="foot"></footer>
+
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -197,7 +201,8 @@ const TXT = {
     errNoGeo: "Tämä selain ei tue paikannusta. Hae pysäkki nimellä.",
     errGeo: "Paikannus ei onnistunut. Salli sijainti selaimen asetuksista tai hae nimellä.",
     loading: "Haetaan…", notFound: "Pysäkkiä ei löytynyt", noUpcoming: "Ei tulevia lähtöjä valituilla linjoilla.",
-    schedNote: "~ tarkoittaa aikataulun mukaista aikaa, ajoneuvosta ei ole vielä seurantatietoa."
+    schedNote: "~ tarkoittaa aikataulun mukaista aikaa, ajoneuvosta ei ole vielä seurantatietoa.",
+    foot: "Aikataulu- ja sijaintitiedot © Digitransit ja HSL {y}, lisenssi CC BY 4.0. Kartta © OpenStreetMap. Pysäkkitaulut ei ole HSL:n virallinen palvelu."
   },
   sv: {
     keyHtml: `<strong>En Digitransit-nyckel behövs.</strong> En gratis nyckel får du genom att registrera dig på <a ${DEV}>Digitransits utvecklarsidor</a>.`,
@@ -217,7 +222,8 @@ const TXT = {
     errNoGeo: "Den här webbläsaren stöder inte positionering. Sök hållplatsen med namn.",
     errGeo: "Positioneringen misslyckades. Tillåt platsåtkomst i webbläsarens inställningar eller sök med namn.",
     loading: "Söker…", notFound: "Hållplatsen hittades inte", noUpcoming: "Inga kommande avgångar för de valda linjerna.",
-    schedNote: "~ betyder tid enligt tidtabell, fordonet har ännu ingen realtidsuppföljning."
+    schedNote: "~ betyder tid enligt tidtabell, fordonet har ännu ingen realtidsuppföljning.",
+    foot: "Tidtabells- och positionsdata © Digitransit och HRT {y}, licens CC BY 4.0. Karta © OpenStreetMap. Pysäkkitaulut är inte en officiell HRT-tjänst."
   },
   en: {
     keyHtml: `<strong>A Digitransit key is needed.</strong> You can get a free key by registering on the <a ${DEV}>Digitransit developer pages</a>.`,
@@ -237,7 +243,8 @@ const TXT = {
     errNoGeo: "This browser does not support location. Search for the stop by name.",
     errGeo: "Could not get your location. Allow location in the browser settings or search by name.",
     loading: "Loading…", notFound: "Stop not found", noUpcoming: "No upcoming departures for the selected lines.",
-    schedNote: "~ means a scheduled time; the vehicle has no live tracking yet."
+    schedNote: "~ means a scheduled time; the vehicle has no live tracking yet.",
+    foot: "Timetable and vehicle position data © Digitransit and HSL {y}, licence CC BY 4.0. Map © OpenStreetMap. Pysäkkitaulut is not an official HSL service."
   }
 };
 const navLang = (navigator.language || "fi").toLowerCase();
@@ -257,6 +264,7 @@ function applyLang(){
   $("modes").setAttribute("aria-label", tr("modeAria")); $("chips").setAttribute("aria-label", tr("linesAria"));
   $("map").setAttribute("aria-label", tr("mapAria"));
   $("share").textContent = tr("share");
+  $("foot").textContent = tr("foot").replace("{y}", new Date().getFullYear());
   $("langs").innerHTML = ["fi", "sv", "en"].map(l =>
     `<button class="btn" data-lang="${l}" aria-pressed="${l === lang}">${l.toUpperCase()}</button>`).join("");
 }
@@ -572,6 +580,7 @@ function stopLive(){
 
 applyLang();
 route();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>
