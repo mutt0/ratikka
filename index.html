@@ -396,6 +396,24 @@ function renderResults(){
     </button></li>`;
   }).join("");
 }
+// HSL:n nimihaku osuu vain suomenkielisiin nimiin. Muilla kielillä haetaan kerran kaikkien
+// pysäkkien käännetyt nimet, etsitään osumat selaimessa ja pyydetään osumien tiedot tunnuksilla.
+const nameIndex = {};
+async function translatedMatches(q){
+  if(!LA()) return [];
+  const l = lang;
+  try{
+    if(!nameIndex[l]) nameIndex[l] = gql(`{ stops { gtfsId name${LA()} } }`).then(d => d.stops || []);
+    const all = await nameIndex[l];
+    const n = q.toLowerCase();
+    const hits = all.filter(s => s.name && s.name.toLowerCase().includes(n));
+    hits.sort((a, b) => b.name.toLowerCase().startsWith(n) - a.name.toLowerCase().startsWith(n));
+    const ids = hits.slice(0, 40).map(s => s.gtfsId);
+    if(!ids.length) return [];
+    const d = await gql(`query($ids:[String]){ stops(ids:$ids){ ${STOP_FIELDS()} } }`, {ids});
+    return (d.stops || []).filter(Boolean);
+  }catch(e){ delete nameIndex[l]; return []; }
+}
 let qTimer;
 $("q").addEventListener("input", () => {
   clearTimeout(qTimer);
@@ -403,8 +421,14 @@ $("q").addEventListener("input", () => {
   if(q.length < 2){ found = null; renderResults(); return; }
   qTimer = setTimeout(async () => {
     try{
-      const d = await gql(`query($q:String!){ stops(name:$q){ ${STOP_FIELDS()} } }`, {q});
-      if($("q").value.trim() === q){ found = d.stops || []; renderResults(); }
+      const [d, extra] = await Promise.all([
+        gql(`query($q:String!){ stops(name:$q){ ${STOP_FIELDS()} } }`, {q}),
+        translatedMatches(q)
+      ]);
+      if($("q").value.trim() !== q) return;
+      const seen = new Set();
+      found = [...extra, ...(d.stops || [])].filter(s => !seen.has(s.gtfsId) && seen.add(s.gtfsId));
+      renderResults();
     }catch(e){}
   }, 300);
 });
