@@ -531,12 +531,12 @@ function startLive(){
   $("map").hidden = false;
   map = L.map("map", {zoomControl: false}).setView([cur.stop.lat, cur.stop.lon], 14);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 18, attribution: "© OpenStreetMap"}).addTo(map);
-  // Pysäkki on rengas omalla, ajoneuvojen yläpuolisella tasollaan: kohdalla oleva ajoneuvo näkyy renkaan sisällä.
-  const at = [cur.stop.lat, cur.stop.lon];
-  const top = map.createPane("stopTop"); top.style.zIndex = 650; top.style.pointerEvents = "none";
-  L.circleMarker(at, {radius: 5, stroke: false, fillColor: "#13201A", fillOpacity: 1, interactive: false}).addTo(map);
-  L.circleMarker(at, {pane: "stopTop", radius: 20, color: "#13201A", weight: 8, fill: false, interactive: false}).addTo(map);
-  L.circleMarker(at, {pane: "stopTop", radius: 20, color: "#FFD23F", weight: 4, fill: false, interactive: false}).addTo(map);
+  // Pysäkki on ohut rasti ajoneuvojen alapuolisella tasolla: kärjet näkyvät kohdalla olevan ajoneuvon takaa.
+  const under = map.createPane("stopUnder"); under.style.zIndex = 590; under.style.pointerEvents = "none";
+  const X = "M4 4L34 34M34 4L4 34";
+  L.marker([cur.stop.lat, cur.stop.lon], {pane: "stopUnder", interactive: false, keyboard: false,
+    icon: L.divIcon({className: "", iconSize: [38, 38], html:
+      `<svg width="38" height="38" viewBox="0 0 38 38" fill="none" stroke-linecap="round"><path d="${X}" stroke="#fff" stroke-width="6.5"/><path d="${X}" stroke="#13201A" stroke-width="2.5"/></svg>`})}).addTo(map);
   if(!window.mqtt) return;
   try{
     mq = mqtt.connect(CONFIG.HFP_URL, {reconnectPeriod: 5000});
