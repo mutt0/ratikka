@@ -531,7 +531,12 @@ function startLive(){
   $("map").hidden = false;
   map = L.map("map", {zoomControl: false}).setView([cur.stop.lat, cur.stop.lon], 14);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 18, attribution: "© OpenStreetMap"}).addTo(map);
-  L.circleMarker([cur.stop.lat, cur.stop.lon], {radius: 9, color: "#13201A", weight: 3, fillColor: "#FFD23F", fillOpacity: 1}).addTo(map);
+  // Pysäkki on rengas omalla, ajoneuvojen yläpuolisella tasollaan: kohdalla oleva ajoneuvo näkyy renkaan sisällä.
+  const at = [cur.stop.lat, cur.stop.lon];
+  const top = map.createPane("stopTop"); top.style.zIndex = 650; top.style.pointerEvents = "none";
+  L.circleMarker(at, {radius: 5, stroke: false, fillColor: "#13201A", fillOpacity: 1, interactive: false}).addTo(map);
+  L.circleMarker(at, {pane: "stopTop", radius: 20, color: "#13201A", weight: 8, fill: false, interactive: false}).addTo(map);
+  L.circleMarker(at, {pane: "stopTop", radius: 20, color: "#FFD23F", weight: 4, fill: false, interactive: false}).addTo(map);
   if(!window.mqtt) return;
   try{
     mq = mqtt.connect(CONFIG.HFP_URL, {reconnectPeriod: 5000});
